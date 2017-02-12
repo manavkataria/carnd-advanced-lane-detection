@@ -258,10 +258,8 @@ def calibrate_camera(filenames):
     return mtx, dist
 
 
-count = 0
 def corners_unwarp(img, filename, nx, ny, mtx, dist):
     undistorted_img = undistort(img, mtx, dist)
-    global count
 
     if img.ndim == 3:
         gray = cv2.cvtColor(undistorted_img, cv2.COLOR_RGB2GRAY)
@@ -271,13 +269,11 @@ def corners_unwarp(img, filename, nx, ny, mtx, dist):
 
     ret, corners = cv2.findChessboardCorners(gray, CHESSBOARD_SQUARES)
 
-
     warped = np.zeros_like(img)
     M = None
     # import ipdb; ipdb.set_trace()
     # If found, draw corners
     if ret is True:
-        count += 1
         cv2.drawChessboardCorners(undistorted_img, (nx, ny), corners, ret)
         display(undistorted_img)
 
@@ -301,13 +297,14 @@ def corners_unwarp(img, filename, nx, ny, mtx, dist):
 
         # d) use cv2.getPerspectiveTransform() to get M, the transform matrix
         M = cv2.getPerspectiveTransform(src, dst)
+        Minv = cv2.getPerspectiveTransform(dst, src)
 
         # e) use cv2.warpPerspective() to warp your image to a top-down view
         warped = cv2.warpPerspective(undistorted_img, M, img_size, flags=cv2.INTER_LINEAR)
         imcompare(undistorted_img, warped, 'undist_' + filename[-6:], 'warped_' + filename[-6:])
         debug("Warped Shape", filename, warped.shape)
 
-    return warped, M
+    return warped, M, Minv
 
 
 def test_camera_calibration(filenames):
@@ -324,12 +321,10 @@ def test_calibrate_and_transform(filenames):
     for filename in filenames:
         debug(filename)
         img = mpimg.imread(filename)
-        warped, M = corners_unwarp(img, filename,
-                                   CHESSBOARD_SQUARES[0],
-                                   CHESSBOARD_SQUARES[1],
-                                   mtx, dist)
-
-    debug("Undistort Corners Found Count %d/%d" % (count, len(filenames)))
+        warped, M, Minv = corners_unwarp(img, filename,
+                                         CHESSBOARD_SQUARES[0],
+                                         CHESSBOARD_SQUARES[1],
+                                         mtx, dist)
 
 
 def main():
