@@ -7,19 +7,15 @@ import pickle
 import os
 
 from utils import debug, display, imcompare
+from settings import (CAMERA_CALIBRATION_DIR,
+                      CAMERA_CALIB_FILE,
+                      CHESSBOARD_SQUARES)
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
 matplotlib.interactive(True)
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
-
-CAMERA_CALIBRATION_DIR = 'camera_cal'
-CAMERA_CALIB_FILE = CAMERA_CALIBRATION_DIR + '/camera_calib.p'
-CHESSBOARD_SQUARES = (9, 6)
-DISPLAY = False
-DEBUG = True
 
 
 class Camera(object):
@@ -91,7 +87,6 @@ class Camera(object):
 
         if img.ndim == 3:
             gray = cv2.cvtColor(undistorted_img, cv2.COLOR_RGB2GRAY)
-            debug("Grayed Shape", gray.shape)
         else:
             gray = undistorted_img
 
@@ -115,8 +110,6 @@ class Camera(object):
             x = img_size[0]/nx
             y = img_size[1]/ny
 
-            debug(img_size, int(x), int(y))
-
             # c) define 4 destination points dst = np.float32([[,],[,],[,],[,]])
             dst = np.float32([[x/2, y/2],
                               [img_size[0]-x/2, y/2],
@@ -130,7 +123,6 @@ class Camera(object):
             # e) use cv2.warpPerspective() to warp your image to a top-down view
             warped = cv2.warpPerspective(undistorted_img, M, img_size, flags=cv2.INTER_LINEAR)
             imcompare(undistorted_img, warped, 'undist_' + filename[-6:], 'warped_' + filename[-6:])
-            debug("Warped Shape", filename, warped.shape)
 
         return warped, M, Minv
 

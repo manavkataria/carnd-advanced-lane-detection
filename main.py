@@ -3,24 +3,16 @@ import cv2
 import glob
 import numpy as np
 import matplotlib
-import inspect
-import pickle
 import os
 
 from utils import debug, display, imcompare
+from settings import DEBUG, DISPLAY
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
 matplotlib.interactive(True)
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
-
-CAMERA_CALIBRATION_DIR = 'camera_cal'
-CAMERA_CALIB_FILE = CAMERA_CALIBRATION_DIR + '/camera_calib.p'
-CHESSBOARD_SQUARES = (9, 6)
-DISPLAY = False
-DEBUG = True
 
 
 # Define a function to return the magnitude of the gradient
@@ -162,7 +154,6 @@ def test_overlay():
 
 
 def main():
-    # test_calibrate_and_transform()
     pass
 
 

@@ -1,14 +1,13 @@
 import matplotlib
 import inspect
 
+from settings import DEBUG, DISPLAY
+
 matplotlib.use('TkAgg')  # MacOSX Compatibility
 matplotlib.interactive(True)
 
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
-DISPLAY = False
-DEBUG = True
 
 
 def debug(*args):
