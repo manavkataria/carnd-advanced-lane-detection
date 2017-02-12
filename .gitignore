@@ -90,3 +90,6 @@ ENV/
 
 # Ctags
 .tags*
+
+# Mac OS X
+.DS_Store

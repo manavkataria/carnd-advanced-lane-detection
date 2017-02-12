@@ -3,13 +3,12 @@ import inspect
 import cv2
 import numpy as np
 
-from settings import DEBUG, DISPLAY, ROI_bbox, ROI
+from settings import DEBUG, DISPLAY
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
 matplotlib.interactive(True)
 
 import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
 
 
 def debug(*args):
@@ -61,3 +60,23 @@ def warper(img, src, dst):
     # warped = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_NEAREST)
     warped = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_LINEAR)
     return warped, M, Minv
+
+
+def dstack(binary1, binary2):
+    """
+        Stack each channel to view their individual contributions in green and blue respectively
+        This returns a stack of the two binary images, whose components you can see as different colors
+    """
+    color_binary = np.dstack((np.zeros_like(binary1), binary1, binary2))
+    return color_binary
+
+
+def hist(img):
+    color = ('r', 'g', 'b')
+    plt.figure()
+    for i, col in enumerate(color):
+        histr = cv2.calcHist([img], [i], None, [256], [0, 256])
+        # cv2.calcHist(images, channels, mask, histSize, ranges[, hist[, accumulate]])
+        plt.plot(histr, color=col)
+        plt.xlim([-1, 3])
+    plt.show()
