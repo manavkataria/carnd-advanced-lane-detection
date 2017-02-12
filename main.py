@@ -3,6 +3,9 @@ import cv2
 import glob
 import numpy as np
 import matplotlib
+import inspect
+import pickle
+import os
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
 matplotlib.interactive(True)
@@ -11,14 +14,16 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 CAMERA_CALIBRATION_DIR = 'camera_cal'
+CAMERA_CALIB_FILE = CAMERA_CALIBRATION_DIR + '/camera_calib.p'
 CHESSBOARD_SQUARES = (9, 6)
 DISPLAY = False
 DEBUG = True
 
 
 def debug(*args):
+    frame, filename, line_number, function_name, lines, index = inspect.stack()[1]
     if DEBUG:
-        print(*args)
+        print('[%s:%d]' % (function_name, line_number), *args)
 
 
 def display(image, msg='Image', cmap=None):
@@ -213,7 +218,7 @@ def accumalate_objpoints_and_imagepoints(filenames):
             imgpoints.append(corners)
             objpoints.append(objp)
         else:
-            debug("Could Not Find Chessboard Corners for:", filename)
+            debug("Could Not Find All (54) Chessboard Corners for:", filename)
 
     debug('Found %d/%d chessboard corners' % (len(objpoints), len(filenames)))
     return objpoints, imgpoints, img.shape[:2]
@@ -226,7 +231,7 @@ def undistort(img, mtx, dist, crop=True):
     else:
         # Uncropped
         h, w = img.shape[:2]
-        newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
         dst = cv2.undistort(img, mtx, dist, None, newcameramtx)
 
     display(dst)
@@ -234,43 +239,52 @@ def undistort(img, mtx, dist, crop=True):
 
 
 def calibrate_camera(filenames):
+    if (os.path.isfile(CAMERA_CALIB_FILE)):
+        print("File found:" + CAMERA_CALIB_FILE)
+        print("Loading: camera calib params")
+        mtx, dist = pickle.load(open(CAMERA_CALIB_FILE, "rb"))
+        return mtx, dist
+
     mtx, dist = None, None
     opts, ipts, shape = accumalate_objpoints_and_imagepoints(filenames)
     if len(opts) > 0 and len(ipts) > 0:
         ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(opts, ipts, shape, None, None)
 
+    # Save camera calibration params
+    with open(CAMERA_CALIB_FILE, 'wb') as f:
+        debug("Saving calib params: ", CAMERA_CALIB_FILE)
+        pickle.dump([mtx, dist], f)
+
     return mtx, dist
 
 
-def corners_unwarp(img, nx, ny, mtx, dist):
-    if img.ndim == 3:
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        debug("Gray Shape", gray.shape)
+count = 0
+def corners_unwarp(img, filename, nx, ny, mtx, dist):
+    undistorted_img = undistort(img, mtx, dist)
+    global count
 
-    # 3) Find the chessboard corners
-    ret, corners = cv2.findChessboardCorners(img, (nx, ny), None)
-    # debug (corners.shape)
+    if img.ndim == 3:
+        gray = cv2.cvtColor(undistorted_img, cv2.COLOR_RGB2GRAY)
+        debug("Grayed Shape", gray.shape)
+    else:
+        gray = undistorted_img
+
+    ret, corners = cv2.findChessboardCorners(gray, CHESSBOARD_SQUARES)
+
 
     warped = np.zeros_like(img)
     M = None
-
+    # import ipdb; ipdb.set_trace()
     # If found, draw corners
-    if ret == True:
-        # (a) Draw the corners
-        cv2.drawChessboardCorners(undistort, (nx, ny), corners, ret)
-        if DISPLAY: plt.imshow(undistort)
+    if ret is True:
+        count += 1
+        cv2.drawChessboardCorners(undistorted_img, (nx, ny), corners, ret)
+        display(undistorted_img)
 
-        # b) define 4 source points src = np.float32([[,],[,],[,],[,]])
-             #Note: you could pick any four of the detected corners
-             # as long as those four corners define a rectangle
-             #One especially smart way to do this would be to use four well-chosen
-             # corners that were automatically detected during the undistortion steps
-             #We recommend using the automatic detection of corners in your code
-
-        src  = np.float32( [corners[0][0],
-                            corners[nx-1][0],
-                            corners[(nx)*(ny-1)][0],
-                            corners[(nx)*(ny)-1][0]] )
+        src = np.float32([corners[0][0],
+                          corners[nx-1][0],
+                          corners[(nx)*(ny-1)][0],
+                          corners[(nx)*(ny)-1][0]])
 
         # Output Image Size
         img_size = gray.shape[1], gray.shape[0]
@@ -289,39 +303,40 @@ def corners_unwarp(img, nx, ny, mtx, dist):
         M = cv2.getPerspectiveTransform(src, dst)
 
         # e) use cv2.warpPerspective() to warp your image to a top-down view
-        warped = cv2.warpPerspective(undistort, M, img_size, flags=cv2.INTER_LINEAR)
-        debug("Warped Shape", warped.shape)
+        warped = cv2.warpPerspective(undistorted_img, M, img_size, flags=cv2.INTER_LINEAR)
+        imcompare(undistorted_img, warped, 'undist_' + filename[-6:], 'warped_' + filename[-6:])
+        debug("Warped Shape", filename, warped.shape)
 
     return warped, M
 
 
 def test_camera_calibration(filenames):
-    # filenames = ['camera_cal/calibration2.jpg', 'camera_cal/calibration1.jpg', 'camera_cal/calibration3.jpg']
-
     mtx, dist = calibrate_camera(filenames)
 
 
 def test_calibrate_and_transform(filenames):
     # Test
     global DEBUG
-    DEBUG = False
+    DEBUG = True
     mtx, dist = calibrate_camera(filenames)
 
     DEBUG = True
     for filename in filenames:
         debug(filename)
         img = mpimg.imread(filename)
-        dst = undistort(img, mtx, dist)
-        warped, M = corners_unwarp(img, CHESSBOARD_SQUARES[0],
-                                   CHESSBOARD_SQUARES[1], mtx, dist)
-        imcompare(img, dst, filename, filename)
+        warped, M = corners_unwarp(img, filename,
+                                   CHESSBOARD_SQUARES[0],
+                                   CHESSBOARD_SQUARES[1],
+                                   mtx, dist)
+
+    debug("Undistort Corners Found Count %d/%d" % (count, len(filenames)))
 
 
 def main():
     # Test
     directory = CAMERA_CALIBRATION_DIR
     filenames = glob.glob(directory + '/*')
-    # test_calibrate_and_transform(filenames)
+    # filenames = ['camera_cal/calibration2.jpg', 'camera_cal/calibration1.jpg', 'camera_cal/calibration3.jpg']
     test_calibrate_and_transform(filenames)
 
 
