@@ -1,5 +1,4 @@
-
-#!/usr/bin/env pythonw
+#!/usr/bin/env ipython
 import cv2
 import glob
 import numpy as np
@@ -244,15 +243,12 @@ def calibrate_camera(filenames):
 
 
 def corners_unwarp(img, nx, ny, mtx, dist):
-    # 1) Undistort using mtx and dist
-    undistort = cv2.undistort(img, mtx, dist)
-
-    # 2) Convert to grayscale
-    gray = cv2.cvtColor(undistort, cv2.COLOR_BGR2GRAY)
-    debug("Gray Shape", gray.shape)
+    if img.ndim == 3:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        debug("Gray Shape", gray.shape)
 
     # 3) Find the chessboard corners
-    ret, corners = cv2.findChessboardCorners(undistort, (nx, ny), None)
+    ret, corners = cv2.findChessboardCorners(img, (nx, ny), None)
     # debug (corners.shape)
 
     warped = np.zeros_like(img)
@@ -299,26 +295,34 @@ def corners_unwarp(img, nx, ny, mtx, dist):
     return warped, M
 
 
-def test_calibrate_and_transform():
-    # Test
-    directory = CAMERA_CALIBRATION_DIR
-    filenames = glob.glob(directory + '/*')
+def test_camera_calibration(filenames):
     # filenames = ['camera_cal/calibration2.jpg', 'camera_cal/calibration1.jpg', 'camera_cal/calibration3.jpg']
 
     mtx, dist = calibrate_camera(filenames)
 
-    # for filename in filenames:
-    #     debug(filename)
-    #     img = mpimg.imread(filename)
-        # dst = undistort(img, mtx, dist)
-        # warped, M = corners_unwarp(img, CHESSBOARD_SQUARES[0],
-        #                            CHESSBOARD_SQUARES[1], mtx, dist)
 
-        # imcompare(img, warped, filename, filename)
+def test_calibrate_and_transform(filenames):
+    # Test
+    global DEBUG
+    DEBUG = False
+    mtx, dist = calibrate_camera(filenames)
+
+    DEBUG = True
+    for filename in filenames:
+        debug(filename)
+        img = mpimg.imread(filename)
+        dst = undistort(img, mtx, dist)
+        warped, M = corners_unwarp(img, CHESSBOARD_SQUARES[0],
+                                   CHESSBOARD_SQUARES[1], mtx, dist)
+        imcompare(img, dst, filename, filename)
 
 
 def main():
-    test_calibrate_and_transform()
+    # Test
+    directory = CAMERA_CALIBRATION_DIR
+    filenames = glob.glob(directory + '/*')
+    # test_calibrate_and_transform(filenames)
+    test_calibrate_and_transform(filenames)
 
 
 if __name__ == '__main__':
