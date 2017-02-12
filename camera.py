@@ -9,7 +9,8 @@ import os
 from utils import debug, display, imcompare
 from settings import (CAMERA_CALIBRATION_DIR,
                       CAMERA_CALIB_FILE,
-                      CHESSBOARD_SQUARES)
+                      CHESSBOARD_SQUARES,
+                      TEST_IMAGES_DIR)
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
 matplotlib.interactive(True)
@@ -19,6 +20,12 @@ import matplotlib.image as mpimg
 
 
 class Camera(object):
+
+    def __init__(self, chessboard_images_filepath, camera_calib_filepath=CAMERA_CALIB_FILE):
+        self.chessboard_images_filepath = chessboard_images_filepath
+        self.camera_calib_filepath = camera_calib_filepath
+        self.mtx = None
+        self.dist = None
 
     def accumalate_objpoints_and_imagepoints(self, filenames):
         # 3D Object Points in Real World Space
@@ -51,6 +58,9 @@ class Camera(object):
         return objpoints, imgpoints, img.shape[:2]
 
     def undistort(self, img, mtx, dist, crop=True):
+        mtx = self.mtx
+        dist = self.dist
+
         if crop:
             # Regular Undistort Image; Cropped
             dst = cv2.undistort(img, mtx, dist, None, mtx)
@@ -63,12 +73,15 @@ class Camera(object):
         display(dst)
         return dst
 
-    def calibrate_camera(self, filenames):
-        if (os.path.isfile(CAMERA_CALIB_FILE)):
-            print("File found:" + CAMERA_CALIB_FILE)
-            print("Loading: camera calib params")
-            mtx, dist = pickle.load(open(CAMERA_CALIB_FILE, "rb"))
+    def calibrate_camera(self):
+        if (os.path.isfile(self.camera_calib_filepath)):
+            debug("File found:" + self.camera_calib_filepath)
+            debug("Loading: camera calib params")
+            mtx, dist = pickle.load(open(self.camera_calib_filepath, "rb"))
+            self.mtx, self.dist = mtx, dist
             return mtx, dist
+
+        filenames = self.chessboard_images_filepath
 
         mtx, dist = None, None
         opts, ipts, shape = self.accumalate_objpoints_and_imagepoints(filenames)
@@ -76,13 +89,17 @@ class Camera(object):
             ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(opts, ipts, shape, None, None)
 
         # Save camera calibration params
-        with open(CAMERA_CALIB_FILE, 'wb') as f:
-            debug("Saving calib params: ", CAMERA_CALIB_FILE)
+        with open(self.camera_calib_filepath, 'wb') as f:
+            debug("Saving calib params: ", self.camera_calib_filepath)
             pickle.dump([mtx, dist], f)
 
+        self.mtx, self.dist = mtx, dist
         return mtx, dist
 
-    def corners_unwarp(self, img, filename, nx, ny, mtx, dist):
+    def corners_unwarp(self, img, filename, nx, ny, mtx=None, dist=None):
+        if mtx is None or dist is None:
+            mtx, dist = self.mtx, self.dist
+
         undistorted_img = self.undistort(img, mtx, dist)
 
         if img.ndim == 3:
@@ -116,14 +133,19 @@ class Camera(object):
                               [x/2, img_size[1]-y/2],
                               [img_size[0]-x/2, img_size[1]-y/2]])
 
-            # d) use cv2.getPerspectiveTransform() to get M, the transform matrix
-            M = cv2.getPerspectiveTransform(src, dst)
-            Minv = cv2.getPerspectiveTransform(dst, src)
-
-            # e) use cv2.warpPerspective() to warp your image to a top-down view
-            warped = cv2.warpPerspective(undistorted_img, M, img_size, flags=cv2.INTER_LINEAR)
+            warped, M, Minv = self.warper(undistorted_img, src, dst)
             imcompare(undistorted_img, warped, 'undist_' + filename[-6:], 'warped_' + filename[-6:])
 
+        return warped, M, Minv
+
+    def warper(self, img, src, dst):
+        # Compute and apply perpective transform
+        img_size = (img.shape[1], img.shape[0])
+        M = cv2.getPerspectiveTransform(src, dst)
+        Minv = cv2.getPerspectiveTransform(dst, src)
+
+        # keep same size as input image
+        warped = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_NEAREST)
         return warped, M, Minv
 
 
@@ -132,8 +154,8 @@ def test_calibrate_and_transform():
     filenames = glob.glob(directory + '/*.jpg')
     # filenames = ['camera_cal/calibration2.jpg', 'camera_cal/calibration1.jpg', 'camera_cal/calibration3.jpg']
 
-    camera = Camera()
-    mtx, dist = camera.calibrate_camera(filenames)
+    camera = Camera(filenames)
+    mtx, dist = camera.calibrate_camera()
 
     for filename in filenames:
         debug(filename)
@@ -144,9 +166,15 @@ def test_calibrate_and_transform():
                                                 mtx, dist)
 
 
+def test_road_unwarp():
+    directory = TEST_IMAGES_DIR
+    filenames = glob.glob(directory + '/*.jpg')
+
+    camera = Camera()
+    mtx, dist = camera.calibrate_camera(filenames)
+
 def main():
     test_calibrate_and_transform()
-
 
 if __name__ == '__main__':
     main()
