@@ -35,23 +35,31 @@ def test_calibrate_and_transform():
 def test_road_unwarp():
     directory = TEST_IMAGES_DIR
     filenames = glob.glob(directory + '/*.jpg')
+    filenames = [TEST_IMAGES_DIR + '/test1.jpg', TEST_IMAGES_DIR + '/test4.jpg']
 
     camera = Camera()
     mtx, dist = camera.load_or_calibrate_camera()
-
     lanes = Lanes(filenames)
+    filters = VisionFilters()
+    ksize = 5
 
     for filename in filenames:
         img = mpimg.imread(filename)
-        roi_cropped = lanes.overlay_roi(img)
-        undistorted_img = camera.undistort(roi_cropped, crop=False)
-        # imcompare(roi_cropped, undistorted_img, filename, 'undistorted')
-        roi_perspective, roi_perspective_full = lanes.perspective_transform(roi_cropped)
-        imcompare(undistorted_img, roi_perspective_full, filename, 'Perspective')
-        # TODO(Manav): Gradients
+        undistorted_img = camera.undistort(img, crop=False)
+        roi_overlayed = lanes.overlay_roi(undistorted_img)
+        imcompare(undistorted_img, roi_overlayed, filename, 'roi_overlayed')
+        cropped_perspective, scaled_perspective = lanes.perspective_transform(roi_overlayed)
+        # TODO(Manav): Tweaking Improvements
+        # Make Portrait (Done)
+        # Make Parallel Lane Lines
+        # imcompare(undistorted_img, scaled_perspective, filename, 'Perspective')
+
+        # TODO(Manav): Gradient Filters
+        gradx = filters.abs_sobel_thresh(scaled_perspective, orient='x', sobel_kernel=ksize, thresh=(20, 100))
+        imcompare(scaled_perspective, gradx, filename, 'Sobel X')
 
 
-def test_overlay():
+def test_filters():
     filters = VisionFilters()
     image = mpimg.imread('test_images/signs_vehicles_xygrad.jpg')
 
@@ -91,8 +99,8 @@ def test_overlay():
 
 def main():
     # test_calibrate_and_transform()
-    # test_road_unwarp()
-    test_overlay()
+    test_road_unwarp()
+    # test_filters()
 
 
 if __name__ == '__main__':

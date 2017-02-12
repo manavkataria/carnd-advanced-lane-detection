@@ -47,7 +47,7 @@ class Lanes(object):
         image = cv2.addWeighted(image, 1, warp_zero, 0.3, 0)
         return image
 
-    def region_of_interest(self, img, vertices):
+    def crop_to_region_of_interest(self, img, vertices):
         """
         Applies an image mask.
 
@@ -80,7 +80,7 @@ class Lanes(object):
         src = np.array([[x1ROI, y1ROI], [x2ROI, y2ROI], [x3ROI, y3ROI], [x4ROI, y4ROI]], np.int32)
 
         # Input image masked with ROI trapezoid
-        img_ROI = self.region_of_interest(img, [src])
+        img_ROI = self.crop_to_region_of_interest(img, [src])
 
         # Destination ROI rectangle
         dst = np.array([[x4ROI, y1ROI], [x3ROI, y2ROI], [x3ROI, y3ROI], [x4ROI, y4ROI]], np.float32)

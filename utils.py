@@ -50,9 +50,22 @@ def imcompare(image1, image2, msg1='Image1', msg2='Image2', cmap1=None, cmap2=No
     plt.show(block=True)
 
 
-def warper(img, src, dst):
+def warper(img, src, dst, flip=True):
     # Compute and apply perpective transform
-    img_size = (img.shape[1], img.shape[0])
+    if flip:
+        # Resultant image (h,w) = (w,h) of input `img`
+        # import ipdb; ipdb.set_trace()
+        img_size = (img.shape[0], img.shape[1])
+        w, h = img_size
+        w_padding, h_padding = w*0.0, h*0.0
+
+        dst = np.array([[0+w_padding, 0+h_padding],
+                        [w-w_padding, 0+h_padding],
+                        [w-w_padding, h-h_padding],
+                        [0+w_padding, h-h_padding]], np.float32)
+    else:
+        # Resultant image keeps the (h,w) of input `img`
+        img_size = (img.shape[1], img.shape[0])
     M = cv2.getPerspectiveTransform(src, dst)
     Minv = cv2.getPerspectiveTransform(dst, src)
 
