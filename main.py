@@ -24,6 +24,7 @@ from settings import (CAMERA_CALIBRATION_DIR,
 matplotlib.use('TkAgg')  # MacOSX Compatibility
 matplotlib.interactive(True)
 
+from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
 
 
@@ -46,12 +47,12 @@ def test_calibrate_and_transform():
 def filtering_pipeline(image, ksize):
     filters = VisionFilters()
 
-    S_binary = filters.hls_threshold(image, select='s', thresh=HLS_S_THRESHOLD)
+    # S_binary = filters.hls_threshold(image, select='s', thresh=HLS_S_THRESHOLD)
     H_binary = filters.hls_threshold(image, select='h', thresh=HLS_H_THRESHOLD)
     L_binary = filters.hls_threshold(image, select='l', thresh=HLS_L_THRESHOLD)
     # imcompare(S_binary, L_binary, 'S', 'L')
-    hls_sl = dstack(S_binary, L_binary)
-    imcompare(image, hls_sl, None, 'hls_sl')
+    # hls_sl = dstack(S_binary, L_binary)
+    # imcompare(image, hls_sl, None, 'hls_sl')
 
     # imcompare(L_binary, H_binary, 'L', 'H')
     # hls_lh = dstack(L_binary, H_binary)
@@ -89,7 +90,7 @@ def test_road_unwarp():
     filenames = [TEST_IMAGES_DIR + '/test1.jpg',
                  TEST_IMAGES_DIR + '/test4.jpg',
                  TEST_IMAGES_DIR + '/test5.jpg',
-                 TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg']
+                 TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg'][-1:]
 
     camera = Camera()
     mtx, dist = camera.load_or_calibrate_camera()
@@ -105,10 +106,17 @@ def test_road_unwarp():
         # Make Parallel Lane Lines
         # imcompare(undistorted_img, scaled_perspective, filename, 'Perspective')
 
-        # Gradient Filters
+        # Color and Gradient Filters + Denoising
         filtered = filtering_pipeline(scaled_perspective, ksize=KSIZE)
-        imcompare(img, filtered, filename, 'All Combined!')
+        imcompare(roi_overlayed, filtered, filename, 'All Combined!')
+        # --- Preprocessing Done ---
 
+        # --- Fit Lane Lines ---
+        ploty, left_fitx, right_fitx = lanes.fit_lane_lines(filtered)
+        lane_marked_undistorted = lanes.overlay_and_unwarp(undistorted_img, ploty, left_fitx, right_fitx)
+        imcompare(roi_overlayed, lane_marked_undistorted, filename, 'lane_marked_undistorted')
+
+        # --- Find Curvature ---
         # TODO(Manav): Lane Curvature
 
 

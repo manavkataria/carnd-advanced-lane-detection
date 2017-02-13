@@ -66,12 +66,13 @@ def warper(img, src, dst, flip=True):
     else:
         # Resultant image keeps the (h,w) of input `img`
         img_size = (img.shape[1], img.shape[0])
+
     M = cv2.getPerspectiveTransform(src, dst)
     Minv = cv2.getPerspectiveTransform(dst, src)
 
-    # keep same size as input image
     # warped = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_NEAREST)
     warped = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_LINEAR)
+
     return warped, M, Minv
 
 

@@ -21,7 +21,7 @@ KSIZE = 7
 GAUSS_KERNEL = 31
 
 # HLS_S_THRESHOLD         = (90, 255)     # Both White and Yellow
-# HLS_S_THRESHOLD         = (180, 255)    # Yellow picked up and a little bit of white
+HLS_S_THRESHOLD         = (180, 255)    # Yellow picked up and a little bit of white  (UNUSED)
 # HLS_S_THRESHOLD         = (90, 120)     # White picked up not yellow; Too Tight
 # HLS_S_THRESHOLD         = (90, 180)   # Full Noise
 HLS_H_THRESHOLD         = (0, 45)       # Clean Yellow; not white
