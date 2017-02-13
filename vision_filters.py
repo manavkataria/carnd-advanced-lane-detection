@@ -96,3 +96,7 @@ class VisionFilters(object):
         binary[(channel >= thresh[0]) & (channel <= thresh[1])] = 1
 
         return binary
+
+    def gaussian_blur(self, img, kernel_size=3):
+        """Applies a Gaussian Noise kernel"""
+        return cv2.GaussianBlur(img, (kernel_size, kernel_size), 0)

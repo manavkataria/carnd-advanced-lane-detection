@@ -11,12 +11,14 @@ from settings import (CAMERA_CALIBRATION_DIR,
                       CHESSBOARD_SQUARES,
                       TEST_IMAGES_DIR,
                       KSIZE,
-                      HLS_S_THRESHOLD,
                       HLS_H_THRESHOLD,
+                      HLS_S_THRESHOLD,
+                      HLS_L_THRESHOLD,
                       SOBEL_GRADX_THRESHOLD,
                       SOBEL_GRADY_THRESHOLD,
                       SOBEL_MAG_THRESHOLD,
-                      SOBEL_DIR_THRESHOLD
+                      SOBEL_DIR_THRESHOLD,
+                      GAUSS_KERNEL
                       )
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
@@ -46,31 +48,48 @@ def filtering_pipeline(image, ksize):
 
     S_binary = filters.hls_threshold(image, select='s', thresh=HLS_S_THRESHOLD)
     H_binary = filters.hls_threshold(image, select='h', thresh=HLS_H_THRESHOLD)
-    hls_sh = dstack(S_binary, H_binary)
-    imcompare(image, hls_sh, None, 'hls_sh')
+    L_binary = filters.hls_threshold(image, select='l', thresh=HLS_L_THRESHOLD)
+    # imcompare(S_binary, L_binary, 'S', 'L')
+    hls_sl = dstack(S_binary, L_binary)
+    imcompare(image, hls_sl, None, 'hls_sl')
+
+    # imcompare(L_binary, H_binary, 'L', 'H')
+    # hls_lh = dstack(L_binary, H_binary)
+    # imcompare(image, hls_lh, None, 'hls_lh')
+
+    # imcompare(S_binary, H_binary, 'S', 'H')
+    # hls_sh = dstack(S_binary, H_binary)
+    # imcompare(image, hls_sh, None, 'hls_sh')
 
     gradx = filters.abs_sobel_thresh(image, orient='x', sobel_kernel=ksize, thresh=SOBEL_GRADX_THRESHOLD)
     grady = filters.abs_sobel_thresh(image, orient='y', sobel_kernel=ksize, thresh=SOBEL_GRADY_THRESHOLD)
-    gradxy = dstack(gradx, grady)
-    imcompare(image, gradxy, None, 'grad_xy')
+    # gradxy = dstack(gradx, grady)
+    # imcompare(image, gradxy, None, 'grad_xy')
 
     mag_binary = filters.mag_thresh(image, sobel_kernel=ksize, thresh=SOBEL_MAG_THRESHOLD)
     dir_binary = filters.dir_threshold(image, sobel_kernel=ksize, thresh=SOBEL_DIR_THRESHOLD)
-    mag_dir = dstack(mag_binary, dir_binary)
-    imcompare(image, mag_dir, None, 'mag_dir')
+    # mag_dir = dstack(mag_binary, dir_binary)
+    # imcompare(image, mag_dir, None, 'mag_dir')
 
     # Combine output from various filters above
     combined = np.zeros_like(image[:, :, 0])
-    combined[((S_binary == 1) & (H_binary == 1)) |
+    combined[((L_binary == 1) | (H_binary == 1)) |
              (((gradx == 1) & (grady == 1)) | ((mag_binary == 1) & (dir_binary == 1)))] = 1
-    imcompare(image, combined, None, 'All Combined!')
+    # imcompare(image, combined, None, 'All Combined!')
+
+    # Gaussian Blur to smoothen out the noise
+    combined = filters.gaussian_blur(combined, GAUSS_KERNEL)
 
     return combined
+
 
 def test_road_unwarp():
     directory = TEST_IMAGES_DIR
     filenames = glob.glob(directory + '/*.jpg')
-    filenames = [TEST_IMAGES_DIR + '/test1.jpg', TEST_IMAGES_DIR + '/test4.jpg']
+    filenames = [TEST_IMAGES_DIR + '/test1.jpg',
+                 TEST_IMAGES_DIR + '/test4.jpg',
+                 TEST_IMAGES_DIR + '/test5.jpg',
+                 TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg']
 
     camera = Camera()
     mtx, dist = camera.load_or_calibrate_camera()
@@ -83,12 +102,14 @@ def test_road_unwarp():
         # imcompare(undistorted_img, roi_overlayed, filename, 'roi_overlayed')
         cropped_perspective, scaled_perspective = lanes.perspective_transform(roi_overlayed)
         # TODO(Manav): Tweaking Improvements
-        # Make Portrait (Done)
         # Make Parallel Lane Lines
         # imcompare(undistorted_img, scaled_perspective, filename, 'Perspective')
 
-        # TODO(Manav): Gradient Filters
+        # Gradient Filters
         filtered = filtering_pipeline(scaled_perspective, ksize=KSIZE)
+        imcompare(img, filtered, filename, 'All Combined!')
+
+        # TODO(Manav): Lane Curvature
 
 
 def test_filters():
