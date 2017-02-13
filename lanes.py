@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import matplotlib
 
-from utils import warper
+from utils import warper, imcompare
 from settings import ROI
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
@@ -101,8 +101,8 @@ class Lanes(object):
             warped_cropped, self.M_cropped, self.Minv_cropped = warper(img_ROI, src, dst)
             warped_scaled, self.M_scaled, self.Minv_scaled = warper(img_ROI, src, dst_scaled)
         else:
-            warped_cropped = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_LINEAR)
-            warped_scaled = cv2.warpPerspective(img, M, img_size, flags=cv2.INTER_LINEAR)
+            warped_cropped = cv2.warpPerspective(img, self.M_cropped, (img.shape[0], img.shape[1]), flags=cv2.INTER_LINEAR)
+            warped_scaled = cv2.warpPerspective(img, self.M_scaled, (img.shape[0], img.shape[1]), flags=cv2.INTER_LINEAR)
 
         return warped_cropped, warped_scaled
 
@@ -216,3 +216,25 @@ class Lanes(object):
         overlayed = cv2.addWeighted(image, 1, color_warp, 0.3, 0)
 
         return overlayed
+
+    def pipeline(self, image):
+        roi_overlayed = self.overlay_roi(image)
+        # imcompare(image, roi_overlayed, filename, 'roi_overlayed')
+        cropped_perspective, scaled_perspective = self.perspective_transform(roi_overlayed)
+        # TODO(Manav): Tweaking Improvements
+        # Make Parallel Lane Lines
+        # imcompare(image, scaled_perspective, filename, 'Perspective')
+
+        # Color and Gradient Filters + Denoising
+        filtered = filtering_pipeline(scaled_perspective, ksize=KSIZE)
+        # imcompare(roi_overlayed, filtered, filename, 'All Combined!')
+        # --- Preprocessing Done ---
+
+        # --- Fit Lane Lines ---
+        ploty, left_fitx, right_fitx = self.fit_lane_lines(filtered)
+        lane_marked_undistorted = self.overlay_and_unwarp(image, ploty, left_fitx, right_fitx)
+
+        # --- Find Curvature ---
+        # TODO(Manav): Lane Curvature
+
+        return lane_marked_undistorted

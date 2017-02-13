@@ -2,11 +2,12 @@
 import glob
 import matplotlib
 import numpy as np
+# from moviepy.editor import VideoFileClip
 
 from camera import Camera
 from lanes import Lanes
 from vision_filters import VisionFilters
-from utils import debug, imcompare, dstack, hist
+from utils import debug, imcompare, dstack, display
 from settings import (CAMERA_CALIBRATION_DIR,
                       CHESSBOARD_SQUARES,
                       TEST_IMAGES_DIR,
@@ -87,37 +88,19 @@ def filtering_pipeline(image, ksize):
 def test_road_unwarp():
     directory = TEST_IMAGES_DIR
     filenames = glob.glob(directory + '/*.jpg')
-    filenames = [TEST_IMAGES_DIR + '/test1.jpg',
-                 TEST_IMAGES_DIR + '/test4.jpg',
-                 TEST_IMAGES_DIR + '/test5.jpg',
-                 TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg'][-1:]
-
+    # filenames = [TEST_IMAGES_DIR + '/test1.jpg',
+    #              TEST_IMAGES_DIR + '/test4.jpg',
+    #              TEST_IMAGES_DIR + '/test5.jpg',
+    #              TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg']
     camera = Camera()
     mtx, dist = camera.load_or_calibrate_camera()
     lanes = Lanes(filenames)
 
     for filename in filenames:
         img = mpimg.imread(filename)
-        undistorted_img = camera.undistort(img, crop=False)
-        roi_overlayed = lanes.overlay_roi(undistorted_img)
-        # imcompare(undistorted_img, roi_overlayed, filename, 'roi_overlayed')
-        cropped_perspective, scaled_perspective = lanes.perspective_transform(roi_overlayed)
-        # TODO(Manav): Tweaking Improvements
-        # Make Parallel Lane Lines
-        # imcompare(undistorted_img, scaled_perspective, filename, 'Perspective')
-
-        # Color and Gradient Filters + Denoising
-        filtered = filtering_pipeline(scaled_perspective, ksize=KSIZE)
-        imcompare(roi_overlayed, filtered, filename, 'All Combined!')
-        # --- Preprocessing Done ---
-
-        # --- Fit Lane Lines ---
-        ploty, left_fitx, right_fitx = lanes.fit_lane_lines(filtered)
-        lane_marked_undistorted = lanes.overlay_and_unwarp(undistorted_img, ploty, left_fitx, right_fitx)
-        imcompare(roi_overlayed, lane_marked_undistorted, filename, 'lane_marked_undistorted')
-
-        # --- Find Curvature ---
-        # TODO(Manav): Lane Curvature
+        undistorted = camera.undistort(img, crop=False)
+        lane_marked_undistorted = lanes.pipeline(undistorted)
+        display(lane_marked_undistorted, filename)
 
 
 def test_filters():
