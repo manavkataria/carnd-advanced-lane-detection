@@ -2,7 +2,6 @@
 import glob
 import matplotlib
 import numpy as np
-# from moviepy.editor import VideoFileClip
 
 from camera import Camera
 from lanes import Lanes
@@ -19,7 +18,9 @@ from settings import (CAMERA_CALIBRATION_DIR,
                       SOBEL_GRADY_THRESHOLD,
                       SOBEL_MAG_THRESHOLD,
                       SOBEL_DIR_THRESHOLD,
-                      GAUSS_KERNEL
+                      GAUSS_KERNEL,
+                      VIDEO_INPUT,
+                      OUTPUT_DIR
                       )
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
@@ -27,6 +28,7 @@ matplotlib.interactive(True)
 
 from matplotlib import pyplot as plt
 import matplotlib.image as mpimg
+from moviepy.editor import VideoFileClip
 
 
 def test_calibrate_and_transform():
@@ -88,19 +90,23 @@ def filtering_pipeline(image, ksize):
 def test_road_unwarp():
     directory = TEST_IMAGES_DIR
     filenames = glob.glob(directory + '/*.jpg')
-    # filenames = [TEST_IMAGES_DIR + '/test1.jpg',
-    #              TEST_IMAGES_DIR + '/test4.jpg',
-    #              TEST_IMAGES_DIR + '/test5.jpg',
-    #              TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg']
+    filenames = [TEST_IMAGES_DIR + '/test1.jpg',
+                 TEST_IMAGES_DIR + '/test4.jpg',
+                 TEST_IMAGES_DIR + '/test5.jpg',
+                 TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg']
+
     camera = Camera()
-    mtx, dist = camera.load_or_calibrate_camera()
-    lanes = Lanes(filenames)
+    camera.load_or_calibrate_camera()
+
+    lanes = Lanes(filenames,
+                  undistort=camera.undistort,
+                  filtering_pipeline=filtering_pipeline)
 
     for filename in filenames:
         img = mpimg.imread(filename)
-        undistorted = camera.undistort(img, crop=False)
-        lane_marked_undistorted = lanes.pipeline(undistorted)
+        lane_marked_undistorted = lanes.pipeline(img)
         display(lane_marked_undistorted, filename)
+        # TEST_IMAGES_DIR
 
 
 def test_filters():

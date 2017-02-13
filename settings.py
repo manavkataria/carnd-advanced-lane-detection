@@ -5,6 +5,9 @@ from numpy import pi
 DEBUG = True
 DISPLAY = True
 
+# Video Input
+VIDEO_INPUT = 'project_video.mp4'
+OUTPUT_DIR = 'output_images/'
 # Camera Calibration
 CAMERA_CALIBRATION_DIR = 'camera_cal'
 CAMERA_CALIB_FILE = CAMERA_CALIBRATION_DIR + '/camera_calib.p'

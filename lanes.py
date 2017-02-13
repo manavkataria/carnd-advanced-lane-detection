@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib
 
 from utils import warper, imcompare
-from settings import ROI
+from settings import ROI, KSIZE
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
 matplotlib.interactive(True)
@@ -15,10 +15,16 @@ import matplotlib.image as mpimg
 
 class Lanes(object):
 
-    def __init__(self, filenames):
+    def __init__(self, filenames, undistort=None, filtering_pipeline=None):
         self.shape = None
         self.roi = None
         self.filenames = filenames
+
+        # Camera Undistort
+        self.undistort = undistort
+
+        # Filtering pipeline:
+        self.filtering_pipeline = filtering_pipeline
 
         # Perspective Transformation Matrices
         self.M_cropped = None
@@ -218,21 +224,22 @@ class Lanes(object):
         return overlayed
 
     def pipeline(self, image):
-        roi_overlayed = self.overlay_roi(image)
-        # imcompare(image, roi_overlayed, filename, 'roi_overlayed')
+        undistorted = self.undistort(image, crop=False)
+        roi_overlayed = self.overlay_roi(undistorted)
+        # imcompare(image, roi_overlayed, None, 'roi_overlayed')
         cropped_perspective, scaled_perspective = self.perspective_transform(roi_overlayed)
         # TODO(Manav): Tweaking Improvements
         # Make Parallel Lane Lines
-        # imcompare(image, scaled_perspective, filename, 'Perspective')
+        # imcompare(image, scaled_perspective, None, 'Perspective')
 
         # Color and Gradient Filters + Denoising
-        filtered = filtering_pipeline(scaled_perspective, ksize=KSIZE)
-        # imcompare(roi_overlayed, filtered, filename, 'All Combined!')
+        filtered = self.filtering_pipeline(scaled_perspective, ksize=KSIZE)
+        # imcompare(roi_overlayed, filtered, None, 'All Combined!')
         # --- Preprocessing Done ---
 
         # --- Fit Lane Lines ---
         ploty, left_fitx, right_fitx = self.fit_lane_lines(filtered)
-        lane_marked_undistorted = self.overlay_and_unwarp(image, ploty, left_fitx, right_fitx)
+        lane_marked_undistorted = self.overlay_and_unwarp(undistorted, ploty, left_fitx, right_fitx)
 
         # --- Find Curvature ---
         # TODO(Manav): Lane Curvature
