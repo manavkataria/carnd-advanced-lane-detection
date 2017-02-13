@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import matplotlib
 
-from utils import warper, imcompare
+from utils import warper, imcompare, debug
 from settings import ROI, KSIZE
 
 matplotlib.use('TkAgg')  # MacOSX Compatibility
@@ -15,7 +15,7 @@ import matplotlib.image as mpimg
 
 class Lanes(object):
 
-    def __init__(self, filenames, undistort=None, filtering_pipeline=None):
+    def __init__(self, filenames=None, undistort=None, filtering_pipeline=None, shape=(720, 1280)):
         self.shape = None
         self.roi = None
         self.filenames = filenames
@@ -32,12 +32,20 @@ class Lanes(object):
         self.M_scaled = None
         self.Minv_scaled = None
 
-        self.init_shape()
+        self.init_shape(shape)
         self.init_roi()
 
-    def init_shape(self):
-        img = mpimg.imread(self.filenames[0])
-        self.shape = img.shape
+        # Debugging
+        self.save = None
+        self.count = 0
+
+    def init_shape(self, shape):
+        if self.filenames:
+            img = mpimg.imread(self.filenames[0])
+            self.shape = img.shape
+        else:
+            self.shape = shape
+
         self.img_width = self.shape[1]
         self.img_height = self.shape[0]
 
@@ -224,6 +232,10 @@ class Lanes(object):
         return overlayed
 
     def pipeline(self, image):
+        # if self.count <= 600:
+        #     self.count += 1
+        #     return image
+
         undistorted = self.undistort(image, crop=False)
         roi_overlayed = self.overlay_roi(undistorted)
         # imcompare(image, roi_overlayed, None, 'roi_overlayed')
@@ -238,7 +250,15 @@ class Lanes(object):
         # --- Preprocessing Done ---
 
         # --- Fit Lane Lines ---
-        ploty, left_fitx, right_fitx = self.fit_lane_lines(filtered)
+        try:
+            ploty, left_fitx, right_fitx = self.fit_lane_lines(filtered)
+            self.save = (ploty, left_fitx, right_fitx)
+        except:
+            mpimg.imsave('hard/%d.jpg' % self.count, image)
+            debug('Error: Issue at Frame %d' % self.count)
+            (ploty, left_fitx, right_fitx) = self.save
+
+        self.count += 1
         lane_marked_undistorted = self.overlay_and_unwarp(undistorted, ploty, left_fitx, right_fitx)
 
         # --- Find Curvature ---

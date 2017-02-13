@@ -10,7 +10,6 @@ from utils import debug, imcompare, dstack, display
 from settings import (CAMERA_CALIBRATION_DIR,
                       CHESSBOARD_SQUARES,
                       TEST_IMAGES_DIR,
-                      KSIZE,
                       HLS_H_THRESHOLD,
                       HLS_S_THRESHOLD,
                       HLS_L_THRESHOLD,
@@ -19,7 +18,7 @@ from settings import (CAMERA_CALIBRATION_DIR,
                       SOBEL_MAG_THRESHOLD,
                       SOBEL_DIR_THRESHOLD,
                       GAUSS_KERNEL,
-                      VIDEO_INPUT,
+                      INPUT_VIDEOFILE,
                       OUTPUT_DIR
                       )
 
@@ -87,26 +86,38 @@ def filtering_pipeline(image, ksize):
     return combined
 
 
-def test_road_unwarp():
-    directory = TEST_IMAGES_DIR
-    filenames = glob.glob(directory + '/*.jpg')
-    filenames = [TEST_IMAGES_DIR + '/test1.jpg',
-                 TEST_IMAGES_DIR + '/test4.jpg',
-                 TEST_IMAGES_DIR + '/test5.jpg',
-                 TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg']
-
+def test_road_unwarp(images=True):
     camera = Camera()
     camera.load_or_calibrate_camera()
 
-    lanes = Lanes(filenames,
-                  undistort=camera.undistort,
-                  filtering_pipeline=filtering_pipeline)
+    if images:
+        directory = TEST_IMAGES_DIR
+        filenames = glob.glob(directory + '/*.jpg')
+        filenames = [TEST_IMAGES_DIR + '/test1.jpg',
+                     TEST_IMAGES_DIR + '/test4.jpg',
+                     TEST_IMAGES_DIR + '/test5.jpg',
+                     # 'proj_hard/619.jpg', 'proj_hard/621.jpg', 'proj_hard/623.jpg',
+                     TEST_IMAGES_DIR + '/signs_vehicles_xygrad.jpg']
 
-    for filename in filenames:
-        img = mpimg.imread(filename)
-        lane_marked_undistorted = lanes.pipeline(img)
-        display(lane_marked_undistorted, filename)
-        # TEST_IMAGES_DIR
+        lanes = Lanes(filenames,
+                      undistort=camera.undistort,
+                      filtering_pipeline=filtering_pipeline)
+
+        for filename in filenames:
+            img = mpimg.imread(filename)
+            lane_marked_undistorted = lanes.pipeline(img)
+            display(lane_marked_undistorted, filename)
+    else:
+        # Video Mode
+        debug('Processing Video: ', INPUT_VIDEOFILE)
+        input_videoclip = VideoFileClip(INPUT_VIDEOFILE)
+        output_videofile = OUTPUT_DIR + INPUT_VIDEOFILE[:-4] + '_output.mp4'
+        lanes = Lanes(undistort=camera.undistort,
+                      filtering_pipeline=filtering_pipeline)
+        lane_marked_videoclip = input_videoclip.fl_image(lanes.pipeline)  # NOTE: this function expects color images!
+        lane_marked_videoclip.write_videofile(output_videofile, audio=False)
+
+    return
 
 
 def test_filters():
@@ -149,8 +160,8 @@ def test_filters():
 
 def main():
     # test_calibrate_and_transform()
-    test_road_unwarp()
     # test_filters()
+    test_road_unwarp(images=False)
 
 
 if __name__ == '__main__':
