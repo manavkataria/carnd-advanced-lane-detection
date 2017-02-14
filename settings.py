@@ -6,8 +6,8 @@ DEBUG = True
 DISPLAY = True
 
 # Video Input
-# INPUT_VIDEOFILE = 'project_video.mp4'
-INPUT_VIDEOFILE = 'challenge_video.mp4'
+INPUT_VIDEOFILE = 'project_video.mp4'
+# INPUT_VIDEOFILE = 'harder_challenge_video.mp4'
 OUTPUT_DIR = 'output_images/'
 
 # Camera Calibration

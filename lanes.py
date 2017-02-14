@@ -94,6 +94,8 @@ class Lanes(object):
         return masked_image
 
     def perspective_transform(self, img):
+    # TODO(Manav): Tweaking Improvements
+    # Make Parallel Lane Lines
 
         if self.M_cropped is None or self.M_scaled is None:
             if self.roi is None:
@@ -207,20 +209,47 @@ class Lanes(object):
 
         return ploty, left_fitx, right_fitx
 
+
+    def fill_lane_poly(self, image, left_fitx, ploty, mid_fitx, color):
+        """ Note this is a mutating function """
+        pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+        pts_left_mid = np.array([np.flipud(np.transpose(np.vstack([mid_fitx, ploty])))])
+        left_to_mid_pts = np.hstack((pts_left, pts_left_mid))
+        left_to_mid_pts = np.squeeze(left_to_mid_pts)
+        left_to_mid_pts = left_to_mid_pts.astype(int)
+        cv2.fillPoly(image, [left_to_mid_pts], color)
+
+    def fill_lane_polys(self, image, left_fitx, ploty, right_fitx, left_color, mid_color, right_color):
+        """ Note this is a mutating function """
+        # Identify/Highlight car's offset position in lane
+        ratio = (float(image.shape[1])/2 - left_fitx[-1]) / (right_fitx[-1] - left_fitx[-1])
+        mid_fitx = (left_fitx + right_fitx)*0.5
+        car_fitx = (left_fitx + right_fitx)*ratio
+
+        if ratio <= 0.5:
+            self.fill_lane_poly(image, left_fitx, ploty, car_fitx, left_color)
+            self.fill_lane_poly(image, car_fitx, ploty, mid_fitx, mid_color)
+            self.fill_lane_poly(image, mid_fitx, ploty, right_fitx, right_color)
+        else:
+            self.fill_lane_poly(image, left_fitx, ploty, mid_fitx, left_color)
+            self.fill_lane_poly(image, mid_fitx, ploty, car_fitx, mid_color)
+            self.fill_lane_poly(image, car_fitx, ploty, right_fitx, right_color)
+
     def overlay_and_unwarp(self, image, ploty, left_fitx, right_fitx, invWarp=True):
         # Create an image to draw the lines on
         color_warp =  np.zeros((image.shape[1], image.shape[0], image.shape[2]), np.uint8)
 
-        # Recast the x and y points into usable format for cv2.fillPoly()
-        pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
-        pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
-        pts = np.hstack((pts_left, pts_right))
+        # Recast the x and y points into a polygon for cv2.fillPoly()
+        left_color = (0, 100, 0)
+        mid_color = (255, 0, 0)
+        right_color = (0, 180, 0)
+        self.fill_lane_polys(color_warp, left_fitx, ploty, right_fitx,
+                             left_color, mid_color, right_color)
 
-        pts = np.squeeze(pts)
-        pts = pts.astype(int)
-
-        # Draw the lane onto the warped blank image
-        cv2.fillPoly(color_warp, [pts], (0, 255, 0))
+        # Draw a Image Center Line
+        # midline_bottom_pt = (int(image.shape[0]/2), image.shape[1]-1)
+        # midline_top_pt = (int(image.shape[0]/2), image.shape[1]-250)
+        # cv2.arrowedLine(color_warp, midline_bottom_pt, midline_top_pt, (0,0,0), 20)
 
         if invWarp:
             # Warp the blank image back to original perspective space
@@ -231,7 +260,39 @@ class Lanes(object):
 
         return overlayed
 
+    def calculate_curvature(self, ploty, left_fitx, right_fitx):
+        # Scale from pixels to meter per pixel scale
+        y_m_per_pix =  30/720 # meters per pixel in y dimension
+        x_m_per_pix = 3.7/700 # meters per pixel in x dimension
+
+        # Fit the lane markings on coordinates
+        left_fit_cr = np.polyfit(ploty * y_m_per_pix, left_fitx * x_m_per_pix, 2)
+        right_fit_cr = np.polyfit(ploty * y_m_per_pix, right_fitx * x_m_per_pix, 2)
+        y_eval_m = np.max(ploty) * y_m_per_pix
+
+        # Calculate radii of curvature
+        left_curve_radius = ((1. + (2*left_fit_cr[0]*y_eval_m +
+                                    left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+        right_curve_radius = ((1. + (2*right_fit_cr[0]*y_eval_m +
+                                     right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+
+        # Compute centre of lane markings and centre of vehicle
+        off_centre_pixels = ((self.img_width/2) - (left_fitx[-1] + right_fitx[-1])/2)
+        off_centre_m = off_centre_pixels * x_m_per_pix
+
+        return left_curve_radius, right_curve_radius, off_centre_m
+
+    def put_metrics_on_image(self, image, left_curve_radius, right_curve_radius, off_center_m):
+        """ Note this is a mutating function """
+        cv2.putText(image, 'Radius of Lanes: %0.1f(m); %0.1f(m)' % (left_curve_radius,
+                    right_curve_radius), (100, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5,
+                    (255, 255, 255), 4, cv2.LINE_AA)
+        cv2.putText(image, 'Position from Centre: %0.1f(m)' % (off_center_m), (100, 200),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 4, cv2.LINE_AA)
+
+
     def pipeline(self, image):
+        # Skip Frames for faster debugging
         # if self.count <= 600:
         #     self.count += 1
         #     return image
@@ -239,17 +300,14 @@ class Lanes(object):
         undistorted = self.undistort(image, crop=False)
         roi_overlayed = self.overlay_roi(undistorted)
         # imcompare(image, roi_overlayed, None, 'roi_overlayed')
+
         cropped_perspective, scaled_perspective = self.perspective_transform(roi_overlayed)
-        # TODO(Manav): Tweaking Improvements
-        # Make Parallel Lane Lines
         # imcompare(image, scaled_perspective, None, 'Perspective')
 
         # Color and Gradient Filters + Denoising
         filtered = self.filtering_pipeline(scaled_perspective, ksize=KSIZE)
         # imcompare(roi_overlayed, filtered, None, 'All Combined!')
-        # --- Preprocessing Done ---
 
-        # --- Fit Lane Lines ---
         try:
             ploty, left_fitx, right_fitx = self.fit_lane_lines(filtered)
             self.save = (ploty, left_fitx, right_fitx)
@@ -261,7 +319,13 @@ class Lanes(object):
         self.count += 1
         lane_marked_undistorted = self.overlay_and_unwarp(undistorted, ploty, left_fitx, right_fitx)
 
-        # --- Find Curvature ---
-        # TODO(Manav): Lane Curvature
+        (left_curve_radius,
+         right_curve_radius,
+         off_centre_m) = self.calculate_curvature(ploty, left_fitx, right_fitx)
+
+        self.put_metrics_on_image(lane_marked_undistorted,
+                                  left_curve_radius,
+                                  right_curve_radius,
+                                  off_centre_m)
 
         return lane_marked_undistorted
