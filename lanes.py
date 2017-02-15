@@ -39,6 +39,13 @@ class Lanes(object):
         self.save = None
         self.count = 0
 
+        # Scale from pixels to meter per pixel scale
+        self.y_m_per_pix =  30/720 # meters per pixel in y dimension
+        self.x_m_per_pix = 3.7/700 # meters per pixel in x dimension
+
+        # Approx Camera Placement Offset in meter
+        self.lane_offset_bias = -1.5
+
     def init_shape(self, shape):
         if self.filenames:
             img = mpimg.imread(self.filenames[0])
@@ -261,14 +268,11 @@ class Lanes(object):
         return overlayed
 
     def calculate_curvature(self, ploty, left_fitx, right_fitx):
-        # Scale from pixels to meter per pixel scale
-        y_m_per_pix =  30/720 # meters per pixel in y dimension
-        x_m_per_pix = 3.7/700 # meters per pixel in x dimension
 
         # Fit the lane markings on coordinates
-        left_fit_cr = np.polyfit(ploty * y_m_per_pix, left_fitx * x_m_per_pix, 2)
-        right_fit_cr = np.polyfit(ploty * y_m_per_pix, right_fitx * x_m_per_pix, 2)
-        y_eval_m = np.max(ploty) * y_m_per_pix
+        left_fit_cr = np.polyfit(ploty * self.y_m_per_pix, left_fitx * self.x_m_per_pix, 2)
+        right_fit_cr = np.polyfit(ploty * self.y_m_per_pix, right_fitx * self.x_m_per_pix, 2)
+        y_eval_m = np.max(ploty) * self.y_m_per_pix
 
         # Calculate radii of curvature
         left_curve_radius = ((1. + (2*left_fit_cr[0]*y_eval_m +
@@ -278,12 +282,13 @@ class Lanes(object):
 
         # Compute centre of lane markings and centre of vehicle
         off_centre_pixels = ((self.img_width/2) - (left_fitx[-1] + right_fitx[-1])/2)
-        off_centre_m = off_centre_pixels * x_m_per_pix
+        off_centre_m = off_centre_pixels * self.x_m_per_pix + self.lane_offset_bias
 
         return left_curve_radius, right_curve_radius, off_centre_m
 
     def put_metrics_on_image(self, image, left_curve_radius, right_curve_radius, off_center_m):
         """ Note this is a mutating function """
+
         cv2.putText(image, 'Radius of Lanes: %0.1f(m); %0.1f(m)' % (left_curve_radius,
                     right_curve_radius), (100, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.5,
                     (255, 255, 255), 4, cv2.LINE_AA)
@@ -298,15 +303,16 @@ class Lanes(object):
         #     return image
 
         undistorted = self.undistort(image, crop=False)
+        imcompare(image, undistorted, 'Original', 'Undistorted')
         roi_overlayed = self.overlay_roi(undistorted)
-        # imcompare(image, roi_overlayed, None, 'roi_overlayed')
+        imcompare(undistorted, roi_overlayed, 'Undistorted', 'ROI Mask Overlayed')
 
         cropped_perspective, scaled_perspective = self.perspective_transform(roi_overlayed)
-        # imcompare(image, scaled_perspective, None, 'Perspective')
+        imcompare(roi_overlayed, scaled_perspective, 'ROI Mask Overlayed', 'Scaled Perspective')
 
         # Color and Gradient Filters + Denoising
         filtered = self.filtering_pipeline(scaled_perspective, ksize=KSIZE)
-        # imcompare(roi_overlayed, filtered, None, 'All Combined!')
+        imcompare(scaled_perspective, filtered, 'Scaled Perspective', 'Vision Filter Pipeline')
 
         try:
             ploty, left_fitx, right_fitx = self.fit_lane_lines(filtered)
