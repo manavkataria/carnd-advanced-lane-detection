@@ -79,13 +79,13 @@ Minor: Note the position from center is represented as a positive 0.2(m). Compar
 
 # Files
 The project was designed to be modular and reusable. The significant independent domains get their own `Class` and an individual file:
-1. `camera.py` - Camera Calibration
-1. `lanes.py` - Lane Detection
-1. `main.py` - Main test runner with [`test_road_unwarp`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/main.py#L89), [`test_calibrate_and_transform`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/main.py#L33-L46) and [`test_filters`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/main.py#L123)
-1. `utils.py` - Handy utils like [`imcompare`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/utils.py#L32),  [`warper`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/utils.py#L32), [`debug`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/utils.py#L14-L17) shared across modules
-1. `settings.py` - Settings shared across module
-1. `vision_filters.py` - Gradient, magnitude, direction, Sobel filters and related
-1. `README.md` - description of the development process (this file)
+  1. `camera.py` - Camera Calibration
+  1. `lanes.py` - Lane Detection
+  1. `main.py` - Main test runner with [`test_road_unwarp`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/main.py#L89), [`test_calibrate_and_transform`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/main.py#L33-L46) and [`test_filters`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/main.py#L123)
+  1. `utils.py` - Handy utils like [`imcompare`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/utils.py#L32),  [`warper`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/utils.py#L32), [`debug`](https://github.com/manavkataria/carnd-advanced-lane-detection/blob/master/utils.py#L14-L17) shared across modules
+  1. `settings.py` - Settings shared across module
+  1. `vision_filters.py` - Gradient, magnitude, direction, Sobel filters and related
+  1. `README.md` - description of the development process (this file)
 
 All files contain **detailed comments** to explain how the code works. Refer Udacity Repository [CarND-Advanced-Lane-Lines](https://github.com/udacity/CarND-Advanced-Lane-Lines/) - for calibration images, test images and test videos
 
@@ -120,10 +120,10 @@ There was no visual indication for developing an intuition to identify Car's Lan
 ### Building Intuition with Visual Augmentation
 
 To get an intuitive feel, I decided to identify, approximate and visualize the position of the car in the lane with respect to lane-center. In order to achieve this, I identified four different lane lines:
-1. Left Lane Marker Line
-1.  Approximate Car's Trajectory Line
-1.  Lane Center Line, and
-1.  Right Lane Marker Line
+  1. Left Lane Marker Line
+  1.  Approximate Car's Trajectory Line
+  1.  Lane Center Line, and
+  1.  Right Lane Marker Line
 
 **Figure: Frame with Intuitive Off-Center Highlights**
 ![working sample2](https://cloud.githubusercontent.com/assets/2206789/22967455/6706de80-f31b-11e6-815a-07a1d65ecf10.jpg)
