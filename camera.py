@@ -106,6 +106,7 @@ class Camera(object):
                 raise Exception("Error: Invalid Request! Matrix or Distortion Coeff Missing")
 
         undistorted_img = self.undistort(img, mtx, dist)
+        # imcompare(img, undistorted_img, 'Original', 'Undistorted')
 
         if img.ndim == 3:
             gray = cv2.cvtColor(undistorted_img, cv2.COLOR_RGB2GRAY)
@@ -138,7 +139,7 @@ class Camera(object):
                               [x/2, img_size[1]-y/2],
                               [img_size[0]-x/2, img_size[1]-y/2]])
 
-            warped, M, Minv = warper(undistorted_img, src, dst)
+            warped, M, Minv = warper(undistorted_img, src, dst, flip=False)
             imcompare(undistorted_img, warped, 'undist_' + filename[-6:], 'warped_' + filename[-6:])
 
         return warped, M, Minv
